@@ -13,6 +13,7 @@ import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
+import hudson.model.Executor;
 import hudson.model.TaskListener;
 import jenkins.model.Jenkins;
 
@@ -84,7 +85,9 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
         for (final Computer c : getJenkins().getComputers()) {
             if (MesosComputer.class.isInstance(c)) {
                 MesosSlave mesosSlave = (MesosSlave) c.getNode();
-
+		if (c.isOffline() && !c.isIdle()) {
+		    this.stopAllJobsOnANode(c);
+ 		}
                 if (mesosSlave != null && mesosSlave.isPendingDelete()) {
                     final MesosComputer comp = (MesosComputer) c;
                     computersToDeleteBuilder.add(comp);
@@ -126,7 +129,11 @@ public class MesosCleanupThread extends AsyncPeriodicWork {
 
         }
     }
-
+    private void stopAllJobsOnANode(Computer computer) {
+	for (Executor e: computer.getExecutors()) {
+		e.doStop();
+	}
+    }
     @Override
     protected Level getNormalLoggingLevel() {
         return Level.FINE;
